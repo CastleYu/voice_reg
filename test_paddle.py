@@ -1,0 +1,1 @@
+from paddlespeech.cli.text.infer import TextExecutor
