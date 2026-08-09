@@ -1,4 +1,3 @@
-paddlespeech==1.4.1
 pytest-runner
 pymilvus
 pymysql
@@ -21,3 +20,4 @@ tensorflow
 Keras>=2.3.1
 numpy>=1.18.2
 numba>=0.48
+protobuf==3.20.2

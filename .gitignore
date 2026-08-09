@@ -140,3 +140,14 @@ cython_debug/
 # vscode
 .vscode/
 /data/voice/
+
+# local debug / runtime artifacts (not for upstream)
+/model/
+data/database.db
+cloc.exe
+cloc_effective.ps1
+command_data.npy
+command_data_instructions.json
+tmp.md
+**/node_modules/
+**/dist/

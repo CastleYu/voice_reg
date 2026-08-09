@@ -8,6 +8,7 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel
 
 from action.lac_tokenizer import LACTokenizer
+from wrappers.timer import timerC
 
 
 class InstructionMatcher:
@@ -15,11 +16,12 @@ class InstructionMatcher:
         self.models_dir = models_dir
         self._matcher = matcher
 
-    def match(self, input_instruction, instruction_set, threshold=0.8):
-        return self._matcher.match(input_instruction, instruction_set, threshold)
+    @timerC
+    def match(self, input_command, command_set, threshold=0.8):
+        return self._matcher.match(input_command, command_set, threshold)
 
-    def to_vec(self, instruction):
-        return self._matcher.to_vec(instruction)
+    def to_vec(self, command):
+        return self._matcher.to_vec(command)
 
     def load(self, matcher):
         self._matcher = matcher
@@ -34,75 +36,78 @@ class MicomlMatcher:
         self._model_bert = None
         self.threshold = 0.8
         self.cached_embeddings = None  # 缓存指令集向量
-        self.cached_instructions = None  # 缓存原始指令集
+        self.cached_commands = None  # 缓存原始指令集
 
     def load_model(self, model_dir):
         model_full_path = str(os.path.join(model_dir, self.model_name))
         self._model_bert = SentenceTransformer(model_full_path)
         return self
 
-    def cache_instruction_set(self, instruction_set, file_path):
+    def encode(self, command):
+        command = self.do_cut(command)
+        return self._model_bert.encode([command])
+
+    def cache_command_set(self, command_set, file_path):
         """
         预先计算并缓存指令集的向量嵌入，并将其存储到本地文件
         """
-        self.cached_instructions = instruction_set
+        self.cached_commands = command_set
         self.cached_embeddings = np.array(
-            self._model_bert.encode([self.do_cut(instruction) for instruction in tqdm(instruction_set, desc="编码中")])
+            self._model_bert.encode([self.do_cut(command) for command in tqdm(command_set, desc="编码中")])
         )
         print("Step: 存储到本地文件")
         np.save(file_path, self.cached_embeddings)
-        with open(file_path + '_instructions.json', 'w', encoding='utf-8') as f:
-            json.dump(instruction_set, f, ensure_ascii=False)
+        with open(file_path + '_commands.json', 'w', encoding='utf-8') as f:
+            json.dump(command_set, f, ensure_ascii=False)
 
-    def load_cached_instruction_set(self, file_path):
+    def load_cached_command_set(self, file_path):
         """
         从本地文件加载指令集向量和原始指令
         """
-        self.cached_embeddings = np.load(file_path)
-        with open(file_path + '_instructions.json', 'r', encoding='utf-8') as f:
-            self.cached_instructions = json.load(f)
+        self.cached_embeddings = np.load(file_path + ".npy")
+        with open(file_path + '_commands.json', 'r', encoding='utf-8') as f:
+            self.cached_commands = json.load(f)
 
-    def batch_match(self, instruction_list, threshold=None, do_cut=True):
-        if self.cached_embeddings is None or self.cached_instructions is None:
-            raise ValueError("请先调用 `cache_instruction_set` 或 `load_cached_instruction_set` 方法来缓存指令集。")
+    def batch_match(self, command_list, threshold=None, do_cut=True):
+        if self.cached_embeddings is None or self.cached_commands is None:
+            raise ValueError("请先调用 `cache_command_set` 或 `load_cached_command_set` 方法来缓存指令集。")
 
         threshold = threshold or self.threshold
 
         print("Step: 批量进行分词和编码")
         if do_cut:
-            instruction_list = [self.do_cut(instr) for instr in instruction_list]
-        input_embeddings = np.array(self._model_bert.encode(instruction_list))
+            command_list = [self.do_cut(instr) for instr in command_list]
+        input_embeddings = np.array(self._model_bert.encode(command_list))
 
         print("Step: 批量计算余弦相似度")
         cosine_scores = cosine_similarity(input_embeddings, self.cached_embeddings)
 
         print("Step: 对每个输入找到相似度最高的指令及其分数")
         results = []
-        for i, scores in tqdm(enumerate(cosine_scores),desc="批量获取最高指令分数"):
+        for i, scores in tqdm(enumerate(cosine_scores), desc="批量获取最高指令分数"):
             max_index = np.argmax(scores)
             max_score = scores[max_index]
             if max_score > threshold:
-                results.append((self.cached_instructions[max_index], max_score))
+                results.append((self.cached_commands[max_index], max_score))
             else:
                 results.append(('No matching actions found', '0'))
         return results
 
-    def do_cut(self, input_instruction):
-        i_list = self._lac.segment(input_instruction)
-        input_instruction = ''.join([i[0] for i in i_list])
-        return input_instruction
+    def do_cut(self, input_command):
+        i_list = self._lac.segment(input_command)
+        input_command = ''.join([i[0] for i in i_list])
+        return input_command
 
-
-    def match(self, input_instruction, instruction_set, threshold=None, do_cut=True):
+    def match(self, input_command, command_set, threshold=None, do_cut=True):
         if do_cut:
-            input_instruction = self.do_cut(input_instruction)
+            input_command = self.do_cut(input_command)
         threshold = threshold or self.threshold
-        embedding = self._model_bert.encode([input_instruction])
+        embedding = self._model_bert.encode([input_command])
         similarity_scores = []
-        for instruction_rec in tqdm(instruction_set, desc="查找指令"):
-            rec_embedding = self._model_bert.encode([instruction_rec])
+        for command_rec in tqdm(command_set, desc="查找指令"):
+            rec_embedding = self._model_bert.encode([command_rec])
             cosine_scores = cosine_similarity(embedding, rec_embedding)
-            similarity_scores.append((instruction_rec, cosine_scores[0][0]))
+            similarity_scores.append((command_rec, cosine_scores[0][0]))
         similarity_scores = sorted(similarity_scores, key=lambda x: x[1], reverse=True)
 
         if similarity_scores[0][1] > threshold:
@@ -110,10 +115,10 @@ class MicomlMatcher:
         else:
             return 'No matching actions found', '0'
 
-    def do_cut(self, input_instruction):
-        i_list = self._lac.segment(input_instruction)
-        input_instruction = ''.join([i[0] for i in i_list])
-        return input_instruction
+    def do_cut(self, input_command):
+        i_list = self._lac.segment(input_command)
+        input_command = ''.join([i[0] for i in i_list])
+        return input_command
 
 
 class BaseBertMatcher:
@@ -128,11 +133,11 @@ class BaseBertMatcher:
         self._tokenizer = AutoTokenizer.from_pretrained(model_full_path)
         self._model = AutoModel.from_pretrained(model_full_path)
 
-    def match(self, input_instruction, instruction_set, threshold=None):
+    def match(self, input_command, command_set, threshold=None):
         threshold = threshold or self.threshold
-        keyword_emb = self.get_embedding(input_instruction)
+        keyword_emb = self.get_embedding(input_command)
         similarities = [(action, cosine_similarity(keyword_emb, self.get_embedding(action))[0][0]) for action in
-                        instruction_set]
+                        command_set]
 
         print("Step: 按相似度排序")
         similarities.sort(key=lambda x: x[1], reverse=True)
@@ -148,3 +153,6 @@ class BaseBertMatcher:
         inputs = self._tokenizer(text, return_tensors='pt')
         outputs = self._model(**inputs)
         return outputs.last_hidden_state.mean(dim=1).detach().numpy()
+
+if __name__ == '__main__':
+    pass

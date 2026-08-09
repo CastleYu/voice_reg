@@ -576,6 +576,7 @@ def recognize():
         similarity_score = str(similarity_score)
         user = sql_client.get_user_by_voiceprint(VoicePrint_id)
         user_name = user.username
+        user_id = user.id
         permission_level = user.permission_level
         asr_result = paddleASR.recognize(file_path)
         possible_action = do_search_action(asr_result)[1]

@@ -15,14 +15,14 @@ from action.action_matcher import *
 from audio.asr import PaddleSpeechRecognition, SpeechRecognitionAdapter
 from audio.vector import PaddleSpeakerVerification, SpeakerVerificationAdapter
 from config import AUDIO_TABLE, USER_TABLE
-from dao.milvus_dao import MilvusClient
+from dao.milvus_dao import MilvusClientLegacy
 from dao.mysql_dao import MySQLClient
 from utils.audioU import pre_process
 
 ACCURACY_THRESHOLD = config.Algorithm.threshold
 MODELS_DIR = config.Update.ModelDir
 
-milvus_client = MilvusClient(config.Milvus.host, config.Milvus.port)
+milvus_client = MilvusClientLegacy(config.Milvus.host, config.Milvus.port)
 milvus_client.create_collection(AUDIO_TABLE)
 mysql_client = MySQLClient(config.MySQL.host, config.MySQL.port, config.MySQL.user,
                            config.MySQL.password, config.MySQL.database)

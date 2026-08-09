@@ -1,7 +1,8 @@
 # -*- coding:utf-8 -*-
-import json
 import time
+
 from action.joint.detector import JointIntentSlotDetector
+from wrappers.timer import timerC
 
 
 class IntentRecognition:
@@ -15,19 +16,30 @@ class IntentRecognition:
         self._initialize_model()
 
     def _initialize_model(self):
-        start_time = time.perf_counter()
         self.model = JointIntentSlotDetector.from_pretrained(
             model_path=self.model_path,
             tokenizer_path=self.tokenizer_path,
             intent_label_path=self.intent_label_path,
             slot_label_path=self.slot_label_path
         )
-        self.load_time = time.perf_counter() - start_time
-        # print(f"模型加载完成，加载时间：{self.load_time:.4f}秒")
 
+    @timerC
     def detect_intent(self, text):
         """检测输入文本的意图和槽位"""
         if not self.model:
             self._initialize_model()
         return self.model.detect(text.strip())
 
+
+if __name__ == '__main__':
+    intent_recognizer = IntentRecognition(
+        model_path='./bert_models/intent',
+        intent_label_path='./bert_models/intent/data/SMP2019/intent_labels.txt',
+        slot_label_path='./bert_models/intent/data/SMP2019/slot_labels.txt'
+    )
+    result = intent_recognizer.detect_intent("启动空调")
+    command_intent = result['intent']
+    # command_slot = result
+    print(result)
+    
+    

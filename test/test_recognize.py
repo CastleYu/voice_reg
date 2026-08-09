@@ -7,14 +7,14 @@ import csv
 import time
 import numpy as np
 import pymysql
-from dao.milvus_dao import MilvusClient
+from dao.milvus_dao import MilvusClientLegacy
 from utils.audioU import pre_process
 from audio.vector import PaddleSpeakerVerification, SpeakerVerificationAdapter
 import config
 from config import AUDIO_TABLE
 
 # 初始化Milvus客户端
-milvus_client = MilvusClient(config.Milvus.host, config.Milvus.port)
+milvus_client = MilvusClientLegacy(config.Milvus.host, config.Milvus.port)
 milvus_client.create_collection(AUDIO_TABLE)
 
 

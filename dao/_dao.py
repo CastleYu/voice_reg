@@ -120,7 +120,7 @@ class SQLDAO(DAOBase, Generic[T]):
     @property
     def is_connected(self) -> bool:
         return (hasattr(self, "engine") and self.engine is not None and
-                hasattr(self, "get_session") and self._get_session is not None)
+                hasattr(self, "_get_session") and self._get_session is not None)
 
     @sql_suppress
     def get(self, id_: Optional[int] = None, **kwargs) -> List[T]:

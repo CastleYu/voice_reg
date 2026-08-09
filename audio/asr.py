@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
 
 import paddle
+# noinspection PyPackageRequirements
 from paddlespeech.cli.asr import ASRExecutor
 
-version = paddle.__version__
-if version != '2.4.1':
-    raise RuntimeError(f"Paddle版本不正确，期望为2.4.1，实际为{version}")
+from wrappers.timer import timerC
 
 
 # from paddlespeech.cli.text import TextExecutor
@@ -26,9 +25,9 @@ class PaddleSpeechRecognition:
         self.asr_executor = ASRExecutor()
         # self.text_executor = TextExecutor()
 
+    @timerC
     def recognize(self, audio_file, lang, sample_rate):
-        # 调用ASRExecutor进行语音识别
-        text = self.asr_executor(
+        voice_text = self.asr_executor(
             model='conformer_wenetspeech',
             lang=lang,
             sample_rate=sample_rate,
@@ -37,11 +36,10 @@ class PaddleSpeechRecognition:
             audio_file=audio_file,
             force_yes=True,
             device=paddle.get_device())
-        # text = self.text_executor(text=text)
-        return text
+        return voice_text
 
 
 if __name__ == '__main__':
     from ui_runner import FileDropApp
 
-    FileDropApp(PaddleSpeechRecognition().recognize).run()
+    FileDropApp(SpeechRecognitionAdapter(PaddleSpeechRecognition()).recognize).run()

@@ -12,8 +12,6 @@ from audio.deep_speaker.conv_models import DeepSpeakerModel
 from audio.deep_speaker.test import batch_cosine_similarity
 
 
-
-
 class SpeakerVerificationAdapter:
     def __init__(self, adaptee):
         self.verificator = adaptee
@@ -30,7 +28,7 @@ class PaddleSpeakerVerification:
     def __init__(self):
         self.vector_executor = VectorExecutor()
 
-    def get_embedding_from_file(self, audio_file, sample_rate):
+    def get_embedding_from_file(self, audio_file, sample_rate=SAMPLE_RATE):
         audio_emb = self.vector_executor(
             model='ecapatdnn_voxceleb12',
             sample_rate=sample_rate,
@@ -71,3 +69,5 @@ class DeepSpeakerVerification:
         计算两个嵌入向量间的余弦相似度。
         """
         return batch_cosine_similarity(emb1, emb2)
+
+

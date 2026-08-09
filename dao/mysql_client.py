@@ -6,7 +6,7 @@
 from sqlalchemy import QueuePool
 
 from ._dao import MySQLDAO, SQLiteDAO, SQLDAO
-from .model import User, Command
+from .model import User, Command, Base
 
 DEBUG = False
 
@@ -81,8 +81,6 @@ class MySQLClient(SQLClient):
 
 
 class SQLiteClient(SQLClient):
-    command: SQLiteDAO[Command]
-    user: SQLiteDAO[User]
 
     def __init__(self, database: str = "default.db", echo: bool = False):
         self.user = SQLiteDAO(User)
