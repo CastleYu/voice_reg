@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: ./Speakers
+      dockerfile: Dockerfile
+    container_name: flask_backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./Speakers:/app
+    environment:
+      - FLASK_ENV=production
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./SpeakersFrontend
+      dockerfile: Dockerfile
+    container_name: vue_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
